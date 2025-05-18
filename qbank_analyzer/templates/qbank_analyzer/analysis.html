@@ -1,0 +1,156 @@
+{% extends 'qbank_analyzer/base.html' %}
+
+{% block title %}Analysis - {{ question_bank.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-chart-bar me-2"></i>Analysis Results
+                </div>
+                <h5 class="mb-0">{{ question_bank.title }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">{{ questions.count }}</h3>
+                                <p class="card-text text-muted">Total Questions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">
+                                    {% with topics=questions.values_list('topic', flat=True).distinct %}
+                                        {{ topics|length }}
+                                    {% endwith %}
+                                </h3>
+                                <p class="card-text text-muted">Unique Topics</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">
+                                    {% with easy=questions.filter.difficulty_level='easy' %}
+                                        {{ easy.count }}
+                                    {% endwith %}
+                                </h3>
+                                <p class="card-text text-muted">Easy Questions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">
+                                    {% with hard=questions.filter.difficulty_level='hard' %}
+                                        {{ hard.count }}
+                                    {% endwith %}
+                                </h3>
+                                <p class="card-text text-muted">Hard Questions</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Question</th>
+                                <th>Topic</th>
+                                <th>Difficulty</th>
+                                <th>Frequency</th>
+                                <th>Trend</th>
+                                <th>Suggested Answer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for question in questions %}
+                                <tr>
+                                    <td>{{ question.question_text|truncatewords:20 }}</td>
+                                    <td>{{ question.topic }}</td>
+                                    <td>
+                                        <span class="badge {% if question.difficulty_level == 'easy' %}bg-success
+                                                          {% elif question.difficulty_level == 'medium' %}bg-warning
+                                                          {% else %}bg-danger{% endif %}">
+                                            {{ question.difficulty_level|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% with analysis=question.analyses.first %}
+                                            {{ analysis.frequency|floatformat:1 }}%
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        {% with analysis=question.analyses.first %}
+                                            <span class="badge {% if analysis.trend == 'increasing' %}bg-success
+                                                              {% elif analysis.trend == 'decreasing' %}bg-danger
+                                                              {% else %}bg-info{% endif %}">
+                                                {{ analysis.trend|title }}
+                                            </span>
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        {% with analysis=question.analyses.first %}
+                                            {% if analysis.suggested_answer %}
+                                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#answerModal{{ question.id }}">
+                                                    View Answer
+                                                </button>
+                                            {% else %}
+                                                <span class="text-muted">Not available</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+
+                                <!-- Answer Modal -->
+                                <div class="modal fade" id="answerModal{{ question.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Suggested Answer</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <h6>Question:</h6>
+                                                <p>{{ question.question_text }}</p>
+                                                <hr>
+                                                <h6>Suggested Answer:</h6>
+                                                {% with analysis=question.analyses.first %}
+                                                    <p>{{ analysis.suggested_answer }}</p>
+                                                    <div class="alert alert-info">
+                                                        <small>
+                                                            <i class="fas fa-info-circle me-1"></i>
+                                                            Confidence Score: {{ analysis.confidence_score|floatformat:2 }}
+                                                        </small>
+                                                    </div>
+                                                {% endwith %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a href="{% url 'qbank_analyzer:home' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,81 @@
+{% extends 'qbank_analyzer/base.html' %}
+
+{% block title %}Home - Question Bank Analyzer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-search me-2"></i>Search Questions
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'qbank_analyzer:search' %}">
+                    {% csrf_token %}
+                    <div class="input-group mb-3">
+                        {{ search_form.search_text }}
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search me-1"></i>Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-book me-2"></i>Your Question Banks
+            </div>
+            <div class="card-body">
+                {% if question_banks %}
+                    <div class="list-group">
+                        {% for bank in question_banks %}
+                            <a href="{% url 'qbank_analyzer:analyze' bank.id %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">{{ bank.title }}</h5>
+                                    <small>{{ bank.upload_date|date:"M d, Y" }}</small>
+                                </div>
+                                <p class="mb-1">{{ bank.description|truncatewords:30 }}</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-file-pdf me-1"></i>{{ bank.questions.count }} questions
+                                </small>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-upload fa-3x text-muted mb-3"></i>
+                        <p class="lead">No question banks uploaded yet.</p>
+                        <a href="{% url 'qbank_analyzer:upload' %}" class="btn btn-primary">
+                            <i class="fas fa-upload me-1"></i>Upload Your First Question Bank
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>About
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Question Bank Analyzer</h5>
+                <p class="card-text">
+                    This tool helps you analyze question banks by:
+                </p>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success me-2"></i>Extracting questions from PDFs</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Analyzing question frequency</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Identifying trends</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Suggesting potential answers</li>
+                </ul>
+                <a href="{% url 'qbank_analyzer:upload' %}" class="btn btn-primary w-100">
+                    <i class="fas fa-upload me-1"></i>Upload New Question Bank
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

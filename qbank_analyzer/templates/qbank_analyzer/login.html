@@ -1,0 +1,53 @@
+{% extends 'qbank_analyzer/base.html' %}
+
+{% block title %}Login - Question Bank Analyzer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-header text-center">
+                <i class="fas fa-user-circle fa-3x mb-3"></i>
+                <h4>Login</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Please correct the errors below.
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">Username</label>
+                        <input type="text" name="username" id="id_username" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label">Password</label>
+                        <input type="password" name="password" id="id_password" class="form-control" required>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="next" value="{{ next }}">
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <p class="mb-0">
+                    <a href="{% url 'admin:index' %}" class="text-muted">
+                        <i class="fas fa-question-circle me-1"></i>Need help?
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
