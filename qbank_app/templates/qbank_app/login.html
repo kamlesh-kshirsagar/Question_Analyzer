@@ -1,0 +1,208 @@
+{% extends 'qbank_app/base.html' %}
+{% block title %}Login - QBank Analyzer{% endblock %}
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100">
+    <div class="col-md-6 col-lg-4">
+        <div class="card bounce-in">
+            <div class="card-header text-center">
+                <div class="floating mb-3">
+                    <i class="fas fa-user-circle icon-large gradient-text"></i>
+                </div>
+                <h3 class="gradient-text mb-0">Welcome Back</h3>
+                <p class="text-muted mb-0">Sign in to access QBank AI</p>
+            </div>
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{% if message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label for="username" class="form-label">
+                            <i class="fas fa-user icon-medium"></i>
+                            Username
+                        </label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                        <div class="invalid-feedback">
+                            Please enter your username.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-lock icon-medium"></i>
+                            Password
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="invalid-feedback">
+                            Please enter your password.
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt icon-medium"></i>
+                            Sign In
+                        </button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-4">
+                    <p class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Demo credentials: admin/admin
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Preview -->
+        <div class="row mt-4">
+            <div class="col-4 text-center">
+                <div class="feature-preview">
+                    <i class="fas fa-robot text-primary"></i>
+                    <small class="d-block text-muted">AI Powered</small>
+                </div>
+            </div>
+            <div class="col-4 text-center">
+                <div class="feature-preview">
+                    <i class="fas fa-file-pdf text-success"></i>
+                    <small class="d-block text-muted">PDF Analysis</small>
+                </div>
+            </div>
+            <div class="col-4 text-center">
+                <div class="feature-preview">
+                    <i class="fas fa-brain text-warning"></i>
+                    <small class="d-block text-muted">Smart Answers</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .min-vh-100 {
+        min-height: calc(100vh - 80px);
+    }
+
+    .feature-preview {
+        padding: 1rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+
+    .feature-preview:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.8);
+    }
+
+    .feature-preview i {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group .btn {
+        border-left: none;
+    }
+
+    .input-group .form-control {
+        border-right: none;
+    }
+
+    .input-group .form-control:focus {
+        border-right: none;
+        box-shadow: none;
+    }
+
+    .input-group .btn:focus {
+        box-shadow: none;
+    }
+
+    .alert {
+        border: none;
+        border-radius: 10px;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #991b1b;
+        border-left: 4px solid var(--danger-color);
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: #1e40af;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        color: inherit;
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+    }
+
+    .btn-close:hover {
+        opacity: 1;
+    }
+</style>
+
+<script>
+    // Password toggle functionality
+    const togglePassword = document.getElementById('togglePassword');
+    const password = document.getElementById('password');
+
+    togglePassword.addEventListener('click', function() {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        
+        const icon = this.querySelector('i');
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    });
+
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Add loading state to submit button
+    form.addEventListener('submit', function() {
+        const submitBtn = document.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin icon-medium"></i> Signing In...';
+        submitBtn.disabled = true;
+    });
+
+    // Auto-focus on username field
+    document.getElementById('username').focus();
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && document.activeElement.id === 'password') {
+            form.submit();
+        }
+    });
+</script>
+{% endblock %} 

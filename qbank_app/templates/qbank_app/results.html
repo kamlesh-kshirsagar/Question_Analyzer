@@ -1,0 +1,842 @@
+{% extends 'qbank_app/base.html' %}
+{% block title %}Results - QBank Analyzer{% endblock %}
+{% block content %}
+<!-- Header Section -->
+<div class="text-center mb-5">
+    <div class="floating">
+        <i class="fas fa-search icon-large gradient-text"></i>
+    </div>
+    <h1 class="gradient-text mb-3">Analysis Results</h1>
+    <p class="lead text-muted">Results for: {{ user_input }}</p>
+</div>
+
+<!-- AI Answer Generation Section -->
+<div class="card mb-4 slide-up">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-robot icon-medium"></i>
+            Answer Generator
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-end">
+            <div class="col-md-8">
+                <label for="ai-question" class="form-label">
+                    <i class="fas fa-lightbulb icon-medium"></i>
+                    Ask a specific question about your topic
+                </label>
+                <input type="text" class="form-control" id="ai-question" 
+                       placeholder="e.g., What is the main concept? How does this work?">
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-primary w-100" onclick="generateAIAnswer()">
+                    <i class="fas fa-magic icon-medium"></i> Generate AI Answer
+                </button>
+            </div>
+        </div>
+        
+        <div id="ai-answer-container" class="mt-4" style="display: none;">
+            <div class="ai-answer-card">
+                <div class="ai-answer-header">
+                    <i class="fas fa-brain text-primary"></i>
+                    <span class="ai-answer-title">AI Generated Answer</span>
+                </div>
+                <div class="ai-answer-content" id="ai-answer-text"></div>
+                <div class="ai-answer-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Confidence: <span id="ai-confidence"></span>%</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-tag"></i>
+                        <span>Type: <span id="ai-question-type"></span></span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-layer-group"></i>
+                        <span>Context: <span id="ai-context-used"></span> sentences</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Similar Questions Section -->
+{% if similar_questions %}
+<div class="card mb-4 slide-up" style="animation-delay: 0.1s;">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-question-circle icon-medium"></i>
+            Similar Questions Found in PDF
+            <span class="badge bg-success ms-2">{{ similar_questions|length }}</span>
+        </h5>
+        <p class="text-muted mb-0 mt-2">
+            <i class="fas fa-info-circle"></i>
+            Questions from the PDF that are semantically similar to your query "{{ user_input }}"
+        </p>
+    </div>
+    <div class="card-body">
+        <div class="similar-questions-container">
+            {% for question_data in similar_questions %}
+            <div class="similar-question-card" data-counter="{{ forloop.counter }}">
+                <div class="similar-question-header">
+                    <div class="similarity-score">
+                        <i class="fas fa-percentage"></i>
+                        <span class="score-value">{{ question_data.similarity_score }}%</span>
+                        <span class="score-label">Similarity</span>
+                    </div>
+                    <div class="question-number">
+                        <i class="fas fa-hashtag"></i>
+                        Question {{ forloop.counter }}
+                    </div>
+                </div>
+                <div class="similar-question-content">
+                    <div class="question-text">
+                        <i class="fas fa-quote-left text-primary me-2"></i>
+                        {{ question_data.question }}
+                    </div>
+                    {% if question_data.explanation %}
+                    <div class="similarity-explanation">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                        <small>{{ question_data.explanation }}</small>
+                    </div>
+                    {% endif %}
+                    <button class="btn btn-outline-success btn-sm mt-2 generate-answer-btn"
+                            onclick="generateAnswerForSimilarQuestion('{{ question_data.question|escapejs }}', {{ forloop.counter }})">
+                        <i class="fas fa-magic"></i> Generate Answer
+                    </button>
+                </div>
+                <div class="similar-answer-container" id="similar-answer-{{ forloop.counter }}" style="display: none;">
+                    <div class="answer-content">
+                        <div class="answer-header">
+                            <i class="fas fa-brain text-success"></i>
+                            <span class="answer-title">AI Answer for Similar Question</span>
+                        </div>
+                        <div class="answer-text" id="similar-answer-text-{{ forloop.counter }}"></div>
+                        <div class="answer-meta">
+                            <span class="confidence-badge" id="similar-confidence-{{ forloop.counter }}"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Find More Similar Questions Section -->
+<!-- <div class="card mb-4 slide-up" style="animation-delay: 0.15s;">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-search-plus icon-medium"></i>
+            Find More Similar Questions
+        </h5>
+    </div> -->
+    <!-- <div class="card-body">
+        <div class="row align-items-end">
+            <div class="col-md-8">
+                <label for="search-question" class="form-label">
+                    <i class="fas fa-search icon-medium"></i>
+                    Search for similar questions in the PDF
+                </label>
+                <input type="text" class="form-control" id="search-question" 
+                       placeholder="e.g., What is research? How does methodology work?">
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-info w-100" onclick="findSimilarQuestions()">
+                    <i class="fas fa-search icon-medium"></i> Find Similar
+                </button>
+            </div>
+        </div>
+        
+        <div id="search-results-container" class="mt-4" style="display: none;">
+            <div class="search-results-header">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-list"></i>
+                    Search Results for: <span id="searched-question"></span>
+                </h6>
+            </div>
+            <div id="search-results-list"></div>
+        </div>
+    </div>
+</div> -->
+
+<!-- Matched Sentences Section -->
+{% if matches %}
+<div class="card slide-up" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-file-alt icon-medium"></i>
+            Matched Sentences from PDF (Similarity > 30%)
+            <span class="badge bg-info ms-2">{{ matches|length }}</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="matches-container">
+            {% for sentence, page, similarity in matches %}
+            <div class="match-card" data-counter="{{ forloop.counter }}">
+                <div class="match-header">
+                    <div class="similarity-badge">
+                        <i class="fas fa-percentage"></i>
+                        {{ similarity|floatformat:1 }}%
+                    </div>
+                    <div class="page-info">
+                        <i class="fas fa-file-alt"></i>
+                        Page {{ page }}
+                    </div>
+                </div>
+                <div class="match-content">
+                    <div class="sentence-text">
+                        <i class="fas fa-quote-left text-muted me-2"></i>
+                        {{ sentence }}
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2 generate-answer-btn"
+                            onclick="generateAnswerForSentence('{{ sentence|escapejs }}')">
+                        <i class="fas fa-magic"></i> Generate Answer
+                    </button>
+                </div>
+                <div class="answer-container" id="answer-{{ forloop.counter }}" style="display: none;">
+                    <div class="answer-content">
+                        <div class="answer-header">
+                            <i class="fas fa-brain text-primary"></i>
+                            <span class="answer-title">AI Answer for this sentence</span>
+                        </div>
+                        <div class="answer-text" id="answer-text-{{ forloop.counter }}"></div>
+                        <div class="answer-meta">
+                            <span class="confidence-badge" id="confidence-{{ forloop.counter }}"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info text-center">
+    <i class="fas fa-info-circle icon-large text-primary mb-3"></i>
+    <h5>No High-Similarity Matches Found</h5>
+    <p class="mb-3">No sentences in the PDF matched your query with more than 30% similarity.</p>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="suggestions">
+                <h6 class="text-primary mb-3">Try these suggestions:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-lightbulb text-warning me-2"></i>Use different keywords or synonyms</li>
+                    <li><i class="fas fa-lightbulb text-warning me-2"></i>Try broader or more general terms</li>
+                    <li><i class="fas fa-lightbulb text-warning me-2"></i>Check spelling and use simpler words</li>
+                    <li><i class="fas fa-lightbulb text-warning me-2"></i>Upload a different PDF document</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="mt-4">
+        <a href="{% url 'home' %}" class="btn btn-primary">
+            <i class="fas fa-arrow-left me-2"></i>Try Different Search
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .question-card, .match-card {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+
+    .question-card:hover, .match-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    .question-text, .sentence-text {
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+    }
+
+    .match-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .similarity-badge {
+        background: var(--gradient-success);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .page-info {
+        color: var(--secondary-color);
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .generate-answer-btn {
+        transition: all 0.3s ease;
+    }
+
+    .generate-answer-btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .answer-container {
+        margin-top: 1rem;
+        animation: slideInDown 0.5s ease-out;
+    }
+
+    .answer-content {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .answer-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+
+    .answer-title {
+        margin-left: 0.5rem;
+    }
+
+    .answer-text {
+        font-size: 0.95rem;
+        line-height: 1.7;
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+    }
+
+    .answer-meta {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .confidence-badge {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .ai-answer-card {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .ai-answer-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        font-size: 1.1rem;
+    }
+
+    .ai-answer-title {
+        margin-left: 0.75rem;
+    }
+
+    .ai-answer-content {
+        font-size: 1rem;
+        line-height: 1.8;
+        color: var(--dark-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .ai-answer-meta {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--primary-color);
+        font-weight: 500;
+    }
+
+    .matches-container {
+        max-height: 600px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .suggestions {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 1px solid rgba(99, 102, 241, 0.1);
+    }
+
+    .suggestions ul li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .suggestions ul li:last-child {
+        border-bottom: none;
+    }
+
+    .suggestions ul li:hover {
+        transform: translateX(5px);
+        color: var(--primary-color);
+    }
+
+    .suggestions ul li i {
+        transition: all 0.3s ease;
+    }
+
+    .suggestions ul li:hover i {
+        transform: scale(1.2);
+    }
+
+    .similar-question-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+
+    .similar-question-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    .similar-question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .similarity-score {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: var(--gradient-success);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .score-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .score-label {
+        font-size: 0.75rem;
+        opacity: 0.9;
+    }
+
+    .question-number {
+        color: var(--secondary-color);
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .similarity-explanation {
+        background: rgba(255, 193, 7, 0.1);
+        border-left: 3px solid #ffc107;
+        padding: 0.5rem;
+        margin: 0.5rem 0;
+        border-radius: 0 5px 5px 0;
+        font-style: italic;
+    }
+
+    .similar-questions-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .search-results-header {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .search-result-item {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .search-result-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .question-card, .match-card {
+            padding: 1rem;
+        }
+        
+        .ai-answer-card {
+            padding: 1.5rem;
+        }
+        
+        .ai-answer-meta {
+            flex-direction: column;
+            gap: 1rem;
+        }
+    }
+</style>
+
+<!-- JavaScript for AI Answer Generation -->
+<script>
+function generateAIAnswer() {
+    const question = document.getElementById('ai-question').value.trim();
+    if (!question) {
+        showNotification('Please enter a question first.', 'warning');
+        return;
+    }
+    
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin icon-medium"></i> Generating...';
+    button.disabled = true;
+    
+    fetch('{% url "generate_answer" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `question=${encodeURIComponent(question)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('ai-answer-text').innerHTML = data.answer;
+            document.getElementById('ai-confidence').textContent = data.confidence;
+            document.getElementById('ai-question-type').textContent = data.question_type;
+            document.getElementById('ai-context-used').textContent = data.context_used;
+            document.getElementById('ai-answer-container').style.display = 'block';
+            
+            // Add animation
+            document.getElementById('ai-answer-container').classList.add('animate__animated', 'animate__fadeInUp');
+            
+            showNotification('AI answer generated successfully!', 'success');
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while generating the answer.', 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function generateAIAnswerForExtractedQuestion(question, counter) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    button.disabled = true;
+    
+    fetch('{% url "generate_answer" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `question=${encodeURIComponent(question)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`extracted-answer-text-${counter}`).innerHTML = data.answer;
+            document.getElementById(`extracted-confidence-${counter}`).textContent = `Confidence: ${data.confidence}%`;
+            document.getElementById(`extracted-answer-${counter}`).style.display = 'block';
+            
+            // Add animation
+            document.getElementById(`extracted-answer-${counter}`).classList.add('animate__animated', 'animate__fadeInUp');
+            
+            showNotification('AI answer generated successfully!', 'success');
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while generating the answer.', 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function generateAnswerForSentence(sentence) {
+    const question = `Explain this: ${sentence}`;
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    button.disabled = true;
+    
+    fetch('{% url "generate_answer" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `question=${encodeURIComponent(question)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const counter = button.closest('.match-card').querySelector('[id^="answer-"]').id.split('-')[1];
+            document.getElementById(`answer-text-${counter}`).innerHTML = data.answer;
+            document.getElementById(`confidence-${counter}`).textContent = `Confidence: ${data.confidence}%`;
+            document.getElementById(`answer-${counter}`).style.display = 'block';
+            
+            // Add animation
+            document.getElementById(`answer-${counter}`).classList.add('animate__animated', 'animate__fadeInUp');
+            
+            showNotification('AI answer generated successfully!', 'success');
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while generating the answer.', 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function generateAnswerForSimilarQuestion(question, counter) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    button.disabled = true;
+    
+    fetch('{% url "generate_answer" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `question=${encodeURIComponent(question)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`similar-answer-text-${counter}`).innerHTML = data.answer;
+            document.getElementById(`similar-confidence-${counter}`).textContent = `Confidence: ${data.confidence}%`;
+            document.getElementById(`similar-answer-${counter}`).style.display = 'block';
+            
+            // Add animation
+            document.getElementById(`similar-answer-${counter}`).classList.add('animate__animated', 'animate__fadeInUp');
+            
+            showNotification('AI answer generated successfully!', 'success');
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while generating the answer.', 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function findSimilarQuestions() {
+    const question = document.getElementById('search-question').value.trim();
+    if (!question) {
+        showNotification('Please enter a question to search for.', 'warning');
+        return;
+    }
+    
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin icon-medium"></i> Searching...';
+    button.disabled = true;
+    
+    fetch('{% url "find_similar_questions" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `question=${encodeURIComponent(question)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('searched-question').textContent = question;
+            const resultsContainer = document.getElementById('search-results-list');
+            resultsContainer.innerHTML = '';
+            
+            if (data.similar_questions.length > 0) {
+                data.similar_questions.forEach((item, index) => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'search-result-item';
+                    resultItem.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="similarity-badge">${item.similarity_score}% Similar</div>
+                            <button class="btn btn-outline-primary btn-sm" onclick="generateAnswerForSimilarQuestion('${item.question.replace(/'/g, "\\'")}', 'search-${index}')">
+                                <i class="fas fa-magic"></i> Generate Answer
+                            </button>
+                        </div>
+                        <div class="question-text">
+                            <i class="fas fa-quote-left text-primary me-2"></i>
+                            ${item.question}
+                        </div>
+                        ${item.explanation ? `<div class="similarity-explanation"><small>${item.explanation}</small></div>` : ''}
+                        <div class="search-answer-container" id="search-answer-search-${index}" style="display: none;">
+                            <div class="answer-content">
+                                <div class="answer-header">
+                                    <i class="fas fa-brain text-primary"></i>
+                                    <span class="answer-title">AI Answer</span>
+                                </div>
+                                <div class="answer-text" id="search-answer-text-search-${index}"></div>
+                                <div class="answer-meta">
+                                    <span class="confidence-badge" id="search-confidence-search-${index}"></span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(resultItem);
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="alert alert-info">No similar questions found.</div>';
+            }
+            
+            document.getElementById('search-results-container').style.display = 'block';
+            showNotification(`Found ${data.total_found} similar questions!`, 'success');
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while searching for similar questions.', 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showNotification(message, type) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : type} notification-toast`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle'}"></i>
+        ${message}
+    `;
+    
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        animation: slideInRight 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Add keyboard shortcut for AI question input
+document.getElementById('ai-question').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        generateAIAnswer();
+    }
+});
+</script>
+{% endblock %} 
