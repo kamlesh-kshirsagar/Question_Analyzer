@@ -1,7 +1,6 @@
 # QBank - Question Bank Analyzer
 
 A Django web application that analyzes PDF documents and finds similar sentences based on user input using NLTK and Google's Gemini AI for intelligent answer generation.
-
 ## Features
 
 - PDF text extraction and analysis
